@@ -1,195 +1,121 @@
-<head></head>
+<head>
+  <script type="text/javascript" src="vector.js"></script>
+  <script type="text/javascript" src="physical-object.js"></script>
+</head>
 
-<body>
-
-</body>
+<body></body>
 
 <script>
-    class Vector {
-        vector;
-        constructor(v1) {
-            this.vector = v1;
-        }
+  // Get the width and height of the window
+  console.log("started");
+  var win = window,
+    d = document,
+    e = d.documentElement,
+    g = d.getElementsByTagName("body")[0],
+    width = win.innerWidth || e.clientWidth || g.clientWidth,
+    height = win.innerHeight || e.clientHeight || g.clientHeight;
+  width = 700;
+  height = 500;
+  globalIsCollided = false;
 
-        //vector addition
-        static add(v1, v2) {
-            //assuming lenghts are equal
-            var result = [];
-            v1.vector.map((x, index) => {
-                result[index] = v1.vector[index] + v2.vector[index]
-            });
-            return new Vector(result);
-        }
+  // Initialise an array to hold the physical objects
+  var physicalObjects = [];
 
-        //multiplying scalar and vector
-        static multiply(v1, s1) {
-            var result = [];
-            v1.vector.map((x, index) => {
-                result[index] = x * s1
-            });
-            return new Vector(result);
-        }
-    }
+  // Initialise the canvas element and set it's width and height
+  //inserting canvas to html dom
+  var canvas = document.createElement("canvas");
+  canvas.id = "canvas";
+  canvas.width = width;
+  canvas.height = height;
+  canvas.style = "border:5px solid #000070;";
 
-    // Get the width and height of the window
-    console.log('started');
-    var win = window,
-        d = document,
-        e = d.documentElement,
-        g = d.getElementsByTagName('body')[0],
-        width = win.innerWidth || e.clientWidth || g.clientWidth,
-        height = win.innerHeight || e.clientHeight || g.clientHeight;
-    width = 700;
-    height = 500;
-    
+  // Append the canvas element to the HTML body
+  document.body.appendChild(canvas);
 
-    // Initialise an array to hold the physical objects
-    var physicalObjects = [];
+  // Get the canvas's context object
+  var context = canvas.getContext("2d");
 
-    // Initialise the canvas element and set it's width and height
-    //inserting canvas to html dom
-    var canvas = document.createElement("canvas");
-    canvas.id = "canvas";
-    canvas.width = width;
-    canvas.height = height;
-    canvas.style = "border:5px solid #000070;"
-
-    // Append the canvas element to the HTML body
-    document.body.appendChild(canvas);
-
-    // Get the canvas's context object
-    var context = canvas.getContext("2d");
-
-    //parameters
-    var dt = 0.02,
+  //parameters
+  var dt = 0.02,
     elasticity = -0.5,
     gravity = 9.8;
 
-    var PhysicalObject = function (x, y, w, h) {
-        
-        //initialize the coordinates and velocity
-        this.s = new Vector([x, y]);
-        this.v = new Vector([0, 0]);
-        // Set the object's x/y position
-        this.dimession = new Vector([w,h]);
-        this.x = x;
-        this.y = y;
+  const mouse = {
+    x: innerWidth / 2,
+    y: innerHeight / 2,
+  };
 
-        // Set the object's width and height
-        this.width = w;
-        this.height = h;
-        this.style = "#999";
-        // Adjust the object's x velocity
-        this.addXVel = function (vel) {
-            this.v.vector[0] += vel;
-        };
+  addEventListener("mousemove", (event) => {
+    mouse.x = event.clientX;
+    mouse.y = event.clientY;
+  });
 
-        // Adjust the object's y velocity
-        this.addYVel = function (vel) {
-            this.v.vector[1] += vel;
-        };
-
-        // Update the object's position for the next frame 
-        //using velocity verlet
-        this.nextFrame = function () {
-            this.s = new Vector([this.x, this.y]);
-            this.a_l = new Vector([0, gravity]);
-            this.temp = Vector.add(Vector.multiply(this.v, dt), Vector.multiply(this.a_l, (0.5 * dt * dt)));
-            this.s = Vector.add(this.s, this.temp);
-            this.a = new Vector([0, gravity]);
-            this.a_avg = Vector.multiply(Vector.add(this.a_l, this.a), 0.5);
-            this.v = Vector.add(this.v, Vector.multiply(this.a_avg, 0.5));
-            [this.x, this.y] = this.s.vector;
-
-            //hit the boundary time for collision
-            if (this.x + this.width>= width || this.x <= 0) {
-                this.v.vector[0] *= elasticity;
-                this.x<=0? (this.x = 0): (this.x = width-this.width); 
-            }
-            if ((this.y + this.height >= height  || this.y <= 0)) {
-                this.v.vector[1] *= elasticity;
-                //y+object height >= canvas height means that part of the object would not be rendered
-                // so need to put the y of the object in such a way that the whole object is rendered
-                //and feels realistic and also we do not do multiple collisions when hit the ground once
-                this.y<=0 ? (this.y = 0 ): (this.y= height-this.height);
-            }
+  var detectCollisions = function (physicalObjects) {
+    for (var i = 0; i < physicalObjects.length; i++) {
+      for (j = i + 1; j < physicalObjects.length; j++) {
+        //AABB
+        var isCollided = physicalObjects[i].areColliding(physicalObjects[j]);
+        if (isCollided) {
+          console.log(i + "," + j + "are collided");
+          physicalObjects[i].style = "#f66";
+          physicalObjects[j].style = "#f66";
         }
-
-        this.areColliding = function(b){
-            var amin = new Vector([this.x, this.y]);
-            var amax = Vector.add(amin,this.dimession );
-
-            var bmin = new Vector([b.x, b.y]);
-            var bmax  = Vector.add(bmin, b.dimession);
-            //get AABB vectors for both objects and use a single vector method for 
-            //detecting collisions in 2d and 3d
-            var isCollided = true;
-            for(var i =0;i< amin.vector.length && isCollided; i++)
-            {
-                isCollided = isCollided && (((amin.vector[i]<=bmin.vector[i])&&(bmin.vector[i]<=amax.vector[i]))  || ((amin.vector[i]<=bmin.vector[i])&&(bmin.vector[i]<=amax.vector[i])));
-            }
-            return isCollided;
-        }
+      }
     }
+  };
 
-
-    var detectCollisions= function(physicalObjects)
-    {
-        for(var i = 0;i< physicalObjects.length; i++)
-        {
-            for (j = i+1; j< physicalObjects.length; j++)
-            {
-                //AABB
-                var isCollided = physicalObjects[i].areColliding(physicalObjects[j]);
-                if(isCollided)
-                {
-                    console.log(i+","+j+'are collided');
-                    physicalObjects[i].style = "#f66";
-                    physicalObjects[j].style = "#f66";
-                }
-            }
-        }
+  var detectCollisionWithMouse = function (physicalObjects) {
+    var mouseObject = new PhysicalObject(mouse.x, mouse.y, 50, 50);
+    var isCollided = false;
+    for (var i = 0; i < physicalObjects.length && !isCollided; i++) {
+      isCollided = physicalObjects[i].areColliding(mouseObject);
     }
+    return isCollided;
+  };
 
-    frameRender = function () {
-        // Clear view
-        context.clearRect(0, 0, width, height);
+  frameRender = function () {
+    // Clear view
+    context.clearRect(0, 0, width, height);
 
-        // For each object in the physicalObjects array...
-        for (var i = 0; i < physicalObjects.length; i++) {
-
-            context.fillStyle =  physicalObjects[i].style;
-            // Draw a rectangle on the canvas to represent the object, based on the object's x, y, width and height
-            context.fillRect(
-                physicalObjects[i].x,
-                physicalObjects[i].y,
-                physicalObjects[i].width,
-                physicalObjects[i].height
-            );
-              // Tell the object to update itself for the next frame
-              physicalObjects[i].nextFrame();
-        }
-
-            detectCollisions(physicalObjects);
-        
+    // For each object in the physicalObjects array...
+    for (var i = 0; i < physicalObjects.length; i++) {
+      context.fillStyle = physicalObjects[i].style;
+      // Draw a rectangle on the canvas to represent the object, based on the object's x, y, width and height
+      context.fillRect(
+        physicalObjects[i].x,
+        physicalObjects[i].y,
+        physicalObjects[i].width,
+        physicalObjects[i].height
+      );
+      // Tell the object to update itself for the next frame
+      physicalObjects[i].nextFrame();
     }
-
-    //setInterval(frameRender, dt * 1000);
-    frameRenderLoop = function () {
-        // Use requestAnimationFrame to trigger the 'frameRenderLoop' function as soon as the browser is ready to repaint
-        requestAnimationFrame(frameRenderLoop);
-
-        // Render the current frame
-        frameRender();
+    detectCollisions(physicalObjects);
+    if (!globalIsCollided) {
+      context.fillStyle = "#66f";
+      context.fillRect(mouse.x, mouse.y, 50, 50);
+      globalIsCollided = detectCollisionWithMouse(physicalObjects);
+    } else {
+      context.fillText("COLLISION DONE", mouse.x, mouse.y);
     }
+  };
 
-    //START THE ANIMATION WITH THE BELOW CODE IN BROWSER CONSOLE
-    // // Start the render loop
-    // frameRenderLoop(); 
+  //setInterval(frameRender, dt * 1000);
+  frameRenderLoop = function () {
+    // Use requestAnimationFrame to trigger the 'frameRenderLoop' function as soon as the browser is ready to repaint
+    requestAnimationFrame(frameRenderLoop);
 
-    // // Add an object into the engine at x: 100, y: 100, with a width and height of 20 pixels.
-    // physicalObjects.push(new PhysicalObject(100, 100, 20, 20));  
+    // Render the current frame
+    frameRender();
+  };
 
-    // // Give it a little push!
-    // physicalObjects[0].addXVel(0.1);
+  //START THE ANIMATION WITH THE BELOW CODE IN BROWSER CONSOLE
+  // // Start the render loop
+  // frameRenderLoop();
+
+  // // Add an object into the engine at x: 100, y: 100, with a width and height of 20 pixels.
+  // physicalObjects.push(new PhysicalObject(100, 100, 20, 20));
+
+  // // Give it a little push!
+  // physicalObjects[0].addXVel(0.1);
 </script>
