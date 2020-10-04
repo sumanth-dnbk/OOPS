@@ -37,7 +37,7 @@
 
   //parameters
   var dt = 0.02,
-    elasticity = -0.5,
+    elasticity = -1,
     gravity = 9.8;
 
   const mouse = {
@@ -57,8 +57,9 @@
         var isCollided = physicalObjects[i].areColliding(physicalObjects[j]);
         if (isCollided) {
           console.log(i + "," + j + "are collided");
-          physicalObjects[i].style = "#f66";
-          physicalObjects[j].style = "#f66";
+          var temp = physicalObjects[i].v;
+          physicalObjects[i].v = physicalObjects[j].v;
+          physicalObjects[j].v = temp;
         }
       }
     }
