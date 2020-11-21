@@ -1,18 +1,23 @@
 var PhysicalObject = function (x, y, w, h) {
   // gravity = 10;
   //initialize the coordinates and velocity
-  this.s = new Vector([x, y]);
-  this.v = new Vector([0, 0]);
-  this.a_avg = new Vector([0, gravity]);
+  this.s = new Vec([x, y]);
+  this.v = new Vec([0, 0]);
+  this.a_avg = new Vec([0, gravity]);
   // Set the object's x/y position
-  this.dimession = new Vector([w, h]);
+  this.dimession = new Vec([w, h]);
   this.x = x;
   this.y = y;
-  this.change = 1;
   // Set the object's width and height
   this.width = w;
   this.height = h;
+  this.springPositions = [];
   this.style = "#" + Math.floor(Math.random() * 256 * 256 * 256);
+  this.torque = 0;
+  this.omega = 0;
+  this.theta = 0;
+  this.m = 1;
+  this.MomentofInertia = (this.m * (w * w + h * h)) / 12;
   // Adjust the object's x velocity
   this.addXVel = function (vel) {
     this.v.vector[0] += vel;
@@ -23,24 +28,54 @@ var PhysicalObject = function (x, y, w, h) {
     this.v.vector[1] += vel;
   };
 
+  this.fixSpringAt = function (x1, y1) {
+    this.springPositions.push(new Vec([x1, y1]));
+  };
+  this.getNetForces = function () {
+    let netForce = new Vec([0, 0]);
+    let gForce = new Vec([0, this.m * gravity]);
+    netForce.add(gForce);
+    //if any constraits for this body then other force
+    if (this.springPositions.length > 0) {
+      this.springPositions.map((springPosition) => {
+        netForce.add(
+          Vec.scale(
+            Vec.subract(
+              new Vec([this.x + this.width / 2, this.y + this.height / 2]),
+              springPosition
+            ),
+            -1 * stiffness
+          )
+        );
+      });
+
+      // netForce.add(springForce);
+    }
+    return netForce;
+  };
   // Update the object's position for the next frame
   //using velocity verlet
   this.nextFrame = function () {
-    this.change *= -1;
-    this.s = new Vector([this.x, this.y]);
+    //calculating new position after previous force calculation
+    this.s = new Vec([this.x, this.y]);
     this.a_l = this.a_avg;
-    this.temp = Vector.add(
-      Vector.multiply(this.v, dt),
-      Vector.multiply(this.a_l, 0.5 * dt * dt)
+    this.temp = Vec.add(
+      Vec.scale(this.v, dt),
+      Vec.scale(this.a_l, 0.5 * dt * dt)
     );
-    this.s = Vector.add(this.s, this.temp);
+    this.s = Vec.add(this.s, this.temp);
 
     //calculation of forces after reaching new position
-    this.a_n = new Vector([0, gravity]);
-    this.a_avg = Vector.multiply(Vector.add(this.a_l, this.a_n), 0.5);
-    this.v = Vector.add(this.v, Vector.multiply(this.a_avg, 0.5));
+    this.netForce = this.getNetForces();
+
+    this.a_n = Vec.scale(this.netForce, 1 / this.m);
+    this.a_avg = Vec.scale(Vec.add(this.a_l, this.a_n), 0.5);
+    this.v = Vec.add(this.v, Vec.scale(this.a_avg, dt));
     [this.x, this.y] = this.s.vector;
 
+    //adding a generailized drag
+    this.v.vector[0] -= this.v.vector[0] * 0.01;
+    this.v.vector[1] -= this.v.vector[1] * 0.01;
     //hit the boundary time for collision
     if (this.x + this.width >= width || this.x <= 0) {
       this.v.vector[0] *= elasticity;
@@ -56,11 +91,11 @@ var PhysicalObject = function (x, y, w, h) {
   };
 
   this.areColliding = function (b) {
-    var amin = new Vector([this.x, this.y]);
-    var amax = Vector.add(amin, this.dimession);
+    var amin = new Vec([this.x, this.y]);
+    var amax = Vec.add(amin, this.dimession);
 
-    var bmin = new Vector([b.x, b.y]);
-    var bmax = Vector.add(bmin, b.dimession);
+    var bmin = new Vec([b.x, b.y]);
+    var bmax = Vec.add(bmin, b.dimession);
     //get AABB vectors for both objects and use a single vector method for
     //detecting collisions in 2d and 3d
     var isNotCollided = false;
@@ -69,5 +104,16 @@ var PhysicalObject = function (x, y, w, h) {
         amin.vector[i] >= bmax.vector[i] || bmin.vector[i] >= amax.vector[i];
     }
     return !isNotCollided;
+  };
+
+  this.render = function (context) {
+    context.fillStyle = this.style;
+    context.fillRect(this.x, this.y, this.width, this.height);
+    this.springPositions.map((springPosition) => {
+      context.beginPath();
+      context.moveTo(springPosition.vector[0], springPosition.vector[1]);
+      context.lineTo(this.x + this.width / 2, this.y + this.height / 2);
+      context.stroke();
+    });
   };
 };

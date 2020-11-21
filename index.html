@@ -17,6 +17,7 @@
   width = 700;
   height = 500;
   globalIsCollided = false;
+  stiffness = 0.50;
 
   // Initialise an array to hold the physical objects
   var physicalObjects = [];
@@ -37,7 +38,7 @@
 
   //parameters
   var dt = 0.02,
-    elasticity = -1,
+    elasticity = -0.5,
     gravity = 9.8;
 
   const mouse = {
@@ -80,18 +81,14 @@
 
     // For each object in the physicalObjects array...
     for (var i = 0; i < physicalObjects.length; i++) {
-      context.fillStyle = physicalObjects[i].style;
       // Draw a rectangle on the canvas to represent the object, based on the object's x, y, width and height
-      context.fillRect(
-        physicalObjects[i].x,
-        physicalObjects[i].y,
-        physicalObjects[i].width,
-        physicalObjects[i].height
-      );
+      physicalObjects[i].render(context);
       // Tell the object to update itself for the next frame
       physicalObjects[i].nextFrame();
     }
+
     detectCollisions(physicalObjects);
+
     if (!globalIsCollided) {
       context.fillStyle = "#66f";
       context.fillRect(mouse.x, mouse.y, 50, 50);
@@ -110,13 +107,21 @@
     frameRender();
   };
 
-  //START THE ANIMATION WITH THE BELOW CODE IN BROWSER CONSOLE
-  // // Start the render loop
-  // frameRenderLoop();
+  // START THE ANIMATION WITH THE BELOW CODE IN BROWSER CONSOLE
+  // Start the render loop
+  let p1 = new PhysicalObject(200,550, 20, 20)
+  physicalObjects.push(p1);
+  p1.fixSpringAt(350,0);
+  p1.fixSpringAt(350,500);
+   p1.fixSpringAt(0,250);
+   p1.fixSpringAt(700,250);
+  frameRenderLoop();
 
-  // // Add an object into the engine at x: 100, y: 100, with a width and height of 20 pixels.
-  // physicalObjects.push(new PhysicalObject(100, 100, 20, 20));
+  // Add an object into the engine at x: 100, y: 100, with a width and height of 20 pixels.
+  
 
-  // // Give it a little push!
-  // physicalObjects[0].addXVel(0.1);
+  // Give it a little push!
+  //physicalObjects[0].addXVel(0.1);
+
+  //TODO FOR TOMORROW
 </script>
